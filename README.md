@@ -8,15 +8,12 @@ A browser-based AI game built with FastAPI.
 - Minimax adversarial search
 - Alpha-beta pruning
 - WebSocket-driven game updates
-- Fog-of-war exploration and enemy memory
-- Survival systems: traps, health, and torch turn limit
-- Tactical encounter rules including corridor interception
 
 ## Run locally
 
 ```bash
 python -m pip install -r requirements.txt
-python -m uvicorn app.main:app --reload
+uvicorn app.main:app --reload
 ```
 
 Open `http://127.0.0.1:8000` in your browser.

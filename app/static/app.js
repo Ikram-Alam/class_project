@@ -4,11 +4,8 @@ const ctx = canvas.getContext('2d');
 const statusPill = document.getElementById('statusPill');
 const statusMessage = document.getElementById('statusMessage');
 const turnValue = document.getElementById('turnValue');
-const torchValue = document.getElementById('torchValue');
 const difficultyValue = document.getElementById('difficultyValue');
-const healthValue = document.getElementById('healthValue');
 const gameStateValue = document.getElementById('gameStateValue');
-const enemyRangeValue = document.getElementById('enemyRangeValue');
 const lastMoveValue = document.getElementById('lastMoveValue');
 const aiDepthValue = document.getElementById('aiDepthValue');
 const aiPrunedValue = document.getElementById('aiPrunedValue');
@@ -81,8 +78,6 @@ function renderState() {
   }
 
   const { maze, player, enemy, exit, ai } = currentState;
-  const discoveredSet = new Set((currentState.discovered || []).map((cell) => `${cell.x},${cell.y}`));
-  const trapMap = new Map((maze.traps || []).map((trap) => [`${trap.x},${trap.y}`, trap]));
   const cellSize = Math.floor(Math.min(canvas.width / maze.width, canvas.height / maze.height));
   const boardWidth = cellSize * maze.width;
   const boardHeight = cellSize * maze.height;
@@ -100,15 +95,7 @@ function renderState() {
   ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
   for (let y = 0; y < maze.height; y += 1) {
     for (let x = 0; x < maze.width; x += 1) {
-      const key = `${x},${y}`;
-      const discovered = discoveredSet.has(key);
-      ctx.fillStyle = discovered ? 'rgba(255, 255, 255, 0.055)' : 'rgba(1, 6, 18, 0.96)';
       ctx.fillRect(offsetX + x * cellSize, offsetY + y * cellSize, cellSize - 1, cellSize - 1);
-
-      if (discovered && trapMap.has(key)) {
-        const trap = trapMap.get(key);
-        drawTrap(x, y, cellSize, offsetX, offsetY, Boolean(trap.triggered));
-      }
     }
   }
 
@@ -137,27 +124,14 @@ function renderState() {
     }
   }
 
-  if (discoveredSet.has(`${exit.x},${exit.y}`) || currentState.status !== 'playing') {
-    drawMarker(exit.x, exit.y, cellSize, offsetX, offsetY, '#f7c948', 'EXIT');
-  }
+  drawMarker(exit.x, exit.y, cellSize, offsetX, offsetY, '#f7c948', 'EXIT');
   drawCharacter(player.x, player.y, cellSize, offsetX, offsetY, '#60a5fa');
-  if (currentState.enemyVisible || currentState.status !== 'playing') {
-    drawCharacter(enemy.x, enemy.y, cellSize, offsetX, offsetY, '#f87171');
-  } else if (currentState.enemyLastKnown) {
-    drawGhost(currentState.enemyLastKnown.x, currentState.enemyLastKnown.y, cellSize, offsetX, offsetY);
-  }
-
-  if (currentState.enemyDistance <= 2 && currentState.status === 'playing') {
-    drawDangerPulse(player.x, player.y, cellSize, offsetX, offsetY);
-  }
+  drawCharacter(enemy.x, enemy.y, cellSize, offsetX, offsetY, '#f87171');
 
   statusMessage.textContent = currentState.message;
   turnValue.textContent = String(currentState.turn);
-  torchValue.textContent = `${currentState.turnsRemaining} / ${currentState.maxTurns}`;
   difficultyValue.textContent = currentState.difficulty.charAt(0).toUpperCase() + currentState.difficulty.slice(1);
-  healthValue.textContent = heartText(currentState.playerHealth);
   gameStateValue.textContent = currentState.status.charAt(0).toUpperCase() + currentState.status.slice(1);
-  enemyRangeValue.textContent = currentState.enemyVisible ? String(currentState.enemyDistance) : 'Unknown';
   lastMoveValue.textContent = currentState.lastEnemyMove || currentState.lastPlayerMove || 'None';
   aiDepthValue.textContent = String(ai.depth);
 
@@ -176,31 +150,11 @@ function renderState() {
   `).join('') || '<div class="trace-item"><strong>No available enemy moves</strong><div>The enemy is trapped.</div></div>';
 }
 
-function heartText(health) {
-  return '❤'.repeat(Math.max(0, health)) + '·'.repeat(Math.max(0, 3 - health));
-}
-
 function drawWall(x1, y1, x2, y2) {
   ctx.beginPath();
   ctx.moveTo(x1, y1);
   ctx.lineTo(x2, y2);
   ctx.stroke();
-}
-
-function drawTrap(x, y, cellSize, offsetX, offsetY, triggered) {
-  const cx = offsetX + x * cellSize + cellSize / 2;
-  const cy = offsetY + y * cellSize + cellSize / 2;
-  const size = cellSize * 0.2;
-  ctx.save();
-  ctx.strokeStyle = triggered ? 'rgba(248, 113, 113, 0.32)' : 'rgba(248, 113, 113, 0.86)';
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(cx - size, cy - size);
-  ctx.lineTo(cx + size, cy + size);
-  ctx.moveTo(cx + size, cy - size);
-  ctx.lineTo(cx - size, cy + size);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawCharacter(x, y, cellSize, offsetX, offsetY, color) {
@@ -217,31 +171,6 @@ function drawCharacter(x, y, cellSize, offsetX, offsetY, color) {
   ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
   ctx.lineWidth = 2;
   ctx.stroke();
-}
-
-function drawGhost(x, y, cellSize, offsetX, offsetY) {
-  const cx = offsetX + x * cellSize + cellSize / 2;
-  const cy = offsetY + y * cellSize + cellSize / 2;
-  const radius = cellSize * 0.2;
-  ctx.save();
-  ctx.fillStyle = 'rgba(248, 113, 113, 0.35)';
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
-}
-
-function drawDangerPulse(x, y, cellSize, offsetX, offsetY) {
-  const cx = offsetX + x * cellSize + cellSize / 2;
-  const cy = offsetY + y * cellSize + cellSize / 2;
-  const radius = cellSize * 0.42;
-  ctx.save();
-  ctx.strokeStyle = 'rgba(248, 113, 113, 0.58)';
-  ctx.lineWidth = 3;
-  ctx.beginPath();
-  ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.restore();
 }
 
 function drawMarker(x, y, cellSize, offsetX, offsetY, color, label) {

@@ -261,19 +261,6 @@ h1 {
   font-size: 1.05rem;
 }
 
-#healthValue {
-  letter-spacing: 0.08em;
-  color: #fb7185;
-}
-
-#torchValue {
-  color: #facc15;
-}
-
-#enemyRangeValue {
-  color: #fda4af;
-}
-
 .ai-meta {
   display: flex;
   flex-wrap: wrap;
@@ -314,11 +301,6 @@ h1 {
   gap: 10px;
   justify-items: center;
   margin-top: 14px;
-}
-
-.control-hint {
-  margin-top: 10px;
-  color: rgba(251, 113, 133, 0.85);
 }
 
 .dpad > div {

@@ -22,22 +22,12 @@ DIFFICULTIES = {
     "hard": 6,
 }
 
-TURN_LIMITS = {
-    "easy": 180,
-    "medium": 150,
-    "hard": 120,
-}
-
-DEFAULT_HEALTH = 3
-VISION_RADIUS = 3
-
 
 @dataclass
 class Maze:
     width: int
     height: int
     walls: list[list[dict[str, bool]]]
-    traps: set[Position] = field(default_factory=set)
 
     @classmethod
     def generate(cls, width: int, height: int, rng: random.Random) -> "Maze":
@@ -94,20 +84,11 @@ class Maze:
 
         return self.width * self.height
 
-    def to_payload(self, triggered_traps: set[Position] | None = None) -> dict:
-        triggered_traps = triggered_traps or set()
+    def to_payload(self) -> dict:
         return {
             "width": self.width,
             "height": self.height,
             "cells": self.walls,
-            "traps": [
-                {
-                    "x": x,
-                    "y": y,
-                    "triggered": (x, y) in triggered_traps,
-                }
-                for x, y in sorted(self.traps)
-            ],
         }
 
 
@@ -134,38 +115,17 @@ class GameState:
     ai_trace: list[AITraceItem] = field(default_factory=list)
     last_player_move: str = ""
     last_enemy_move: str = ""
-    player_health: int = DEFAULT_HEALTH
-    max_turns: int = TURN_LIMITS["medium"]
-    vision_radius: int = VISION_RADIUS
-    discovered: set[Position] = field(default_factory=set)
-    triggered_traps: set[Position] = field(default_factory=set)
-    enemy_last_known: Position | None = None
 
     def to_payload(self) -> dict:
-        enemy_visible = self.enemy in self.discovered
-        turns_remaining = max(0, self.max_turns - self.turn)
-
         return {
-            "maze": self.maze.to_payload(self.triggered_traps),
+            "maze": self.maze.to_payload(),
             "player": {"x": self.player[0], "y": self.player[1]},
             "enemy": {"x": self.enemy[0], "y": self.enemy[1]},
             "exit": {"x": self.exit[0], "y": self.exit[1]},
             "turn": self.turn,
-            "turnsRemaining": turns_remaining,
-            "maxTurns": self.max_turns,
             "status": self.status,
             "difficulty": self.difficulty,
             "message": self.message,
-            "playerHealth": self.player_health,
-            "visionRadius": self.vision_radius,
-            "discovered": [{"x": x, "y": y} for x, y in sorted(self.discovered)],
-            "enemyVisible": enemy_visible,
-            "enemyLastKnown": (
-                None
-                if self.enemy_last_known is None
-                else {"x": self.enemy_last_known[0], "y": self.enemy_last_known[1]}
-            ),
-            "enemyDistance": self.maze.shortest_distance(self.enemy, self.player),
             "ai": {
                 "depth": self.ai_depth,
                 "trace": [
@@ -204,8 +164,6 @@ class GameSession:
         self.seed = random.SystemRandom().randint(1, 1_000_000_000)
         self.rng = random.Random(self.seed)
         maze = Maze.generate(self.width, self.height, self.rng)
-        traps = self._generate_traps(maze)
-        maze.traps = traps
         self.state = GameState(
             maze=maze,
             player=(0, 0),
@@ -213,46 +171,14 @@ class GameSession:
             exit=(self.width - 1, self.height - 1),
             difficulty=difficulty,
             ai_depth=DIFFICULTIES[difficulty],
-            max_turns=TURN_LIMITS[difficulty],
-            player_health=DEFAULT_HEALTH,
-            vision_radius=VISION_RADIUS,
         )
-        self._reveal_from_player()
-        if self.state.enemy in self.state.discovered:
-            self.state.enemy_last_known = self.state.enemy
         self.state.message = f"New game started on {difficulty.title()} difficulty."
         return self.state
-
-    def _generate_traps(self, maze: Maze) -> set[Position]:
-        protected = {(0, 0), (self.width - 1, 0), (self.width - 1, self.height - 1)}
-        candidates = [
-            (x, y)
-            for y in range(self.height)
-            for x in range(self.width)
-            if (x, y) not in protected
-        ]
-        self.rng.shuffle(candidates)
-        trap_count = max(4, (self.width * self.height) // 16)
-        return set(candidates[:trap_count])
-
-    def _reveal_from_player(self) -> None:
-        px, py = self.state.player
-        radius = self.state.vision_radius
-        for y in range(max(0, py - radius), min(self.height, py + radius + 1)):
-            for x in range(max(0, px - radius), min(self.width, px + radius + 1)):
-                if abs(x - px) + abs(y - py) <= radius:
-                    self.state.discovered.add((x, y))
-
-    def _update_enemy_visibility(self) -> None:
-        if self.state.enemy in self.state.discovered:
-            self.state.enemy_last_known = self.state.enemy
 
     def move_player(self, direction: Direction) -> GameState:
         if self.state.status != "playing":
             return self.state
 
-        old_player = self.state.player
-        old_enemy = self.state.enemy
         self.state.turn += 1
         self.state.last_player_move = direction
         self.state.last_enemy_move = ""
@@ -266,36 +192,14 @@ class GameSession:
             else:
                 self.state.message = f"You tried to move {self._direction_name(direction)}, but a wall blocked the way."
 
-        self._reveal_from_player()
-
-        if self.state.player in self.state.maze.traps and self.state.player not in self.state.triggered_traps:
-            self.state.triggered_traps.add(self.state.player)
-            self.state.player_health -= 1
-            if self.state.player_health > 0:
-                self.state.message = f"Trap triggered! Health reduced to {self.state.player_health}."
-
-        if self.state.player_health <= 0:
-            self.state.status = "lost"
-            self.state.message = "You succumbed to dungeon traps."
-            self._update_enemy_visibility()
-            return self.state
-
-        if self.state.turn >= self.state.max_turns:
-            self.state.status = "lost"
-            self.state.message = "Your torch faded out before you escaped."
-            self._update_enemy_visibility()
-            return self.state
-
         if self.state.player == self.state.exit:
             self.state.status = "won"
             self.state.message = "You escaped the dungeon."
-            self._update_enemy_visibility()
             return self.state
 
         if self.state.player == self.state.enemy:
             self.state.status = "lost"
             self.state.message = "The enemy caught you."
-            self._update_enemy_visibility()
             return self.state
 
         enemy_move, trace = self._choose_enemy_move()
@@ -309,17 +213,9 @@ class GameSession:
                     f"Enemy chose {self._direction_name(direction_name)} with a minimax score of {trace[0].score:.1f}."
                 )
 
-        crossed_paths = old_player == self.state.enemy and old_enemy == self.state.player
         if self.state.enemy == self.state.player:
             self.state.status = "lost"
             self.state.message = "The enemy caught you."
-        elif crossed_paths:
-            self.state.status = "lost"
-            self.state.message = "The enemy intercepted you in the corridor."
-        elif self.state.maze.shortest_distance(self.state.enemy, self.state.player) <= 2:
-            self.state.message = "You hear footsteps nearby. The enemy is close."
-
-        self._update_enemy_visibility()
 
         return self.state
 
@@ -339,14 +235,8 @@ class GameSession:
         if player == enemy:
             return -10_000.0
 
-        enemy_distance = self.state.maze.shortest_distance(enemy, player)
-        player_exit_distance = self.state.maze.shortest_distance(player, self.state.exit)
-        enemy_exit_distance = self.state.maze.shortest_distance(enemy, self.state.exit)
-
-        score = float(enemy_distance * 8)
-        score += float(player_exit_distance * 1.8)
-        score -= float(enemy_exit_distance * 0.9)
-        return score
+        distance = self.state.maze.shortest_distance(enemy, player)
+        return float(distance * 10)
 
     def _choose_enemy_move(self) -> tuple[tuple[Direction, Position] | None, list[AITraceItem]]:
         moves = self.state.maze.legal_moves(self.state.enemy)
