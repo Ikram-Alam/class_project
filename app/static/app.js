@@ -47,6 +47,9 @@ function connect() {
   socket.addEventListener('open', () => {
     statusPill.textContent  = '● Connected';
     statusPill.className    = 'status-pill connected';
+    // Start a game matching the highlighted difficulty so the UI and server
+    // never disagree about which difficulty is in play.
+    send({ type: 'new_game', difficulty: activeDiff });
   });
   socket.addEventListener('close', () => {
     statusPill.textContent  = '○ Disconnected';
