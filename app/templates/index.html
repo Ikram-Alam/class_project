@@ -1,102 +1,3 @@
-<!-- <!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Dungeon Crawler AI</title>
-  <link rel="stylesheet" href="/static/styles.css">
-</head>
-<body>
-  <div class="backdrop"></div>
-  <main class="shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">FastAPI + DFS + Minimax</p>
-        <h1>Dungeon Crawler AI</h1>
-        <p class="lede">Escape the maze before the enemy learns your route. The server generates the dungeon, runs the AI, and streams every turn live to the browser.</p>
-      </div>
-      <div class="hero-actions">
-        <div class="difficulty-group" role="group" aria-label="Difficulty">
-          <button class="chip active" data-difficulty="easy">Easy</button>
-          <button class="chip" data-difficulty="medium">Medium</button>
-          <button class="chip" data-difficulty="hard">Hard</button>
-        </div>
-        <button id="newGameBtn" class="primary-button">New Game</button>
-      </div>
-    </header>
-
-    <section class="layout">
-      <div class="board-card glass">
-        <div class="board-topbar">
-          <div>
-            <h2>Maze View</h2>
-            <p>Blue is you, red is the enemy, gold marks the exit.</p>
-          </div>
-          <div class="legend">
-            <span><i class="legend-player"></i> Player</span>
-            <span><i class="legend-enemy"></i> Enemy</span>
-            <span><i class="legend-exit"></i> Exit</span>
-          </div>
-        </div>
-        <canvas id="gameCanvas" width="832" height="832" aria-label="Dungeon crawler board"></canvas>
-      </div>
-
-      <aside class="side-column">
-        <section class="panel glass status-panel">
-          <h2>Status</h2>
-          <div id="statusPill" class="status-pill">Connecting...</div>
-          <div class="status-grid">
-            <div><span>Turn</span><strong id="turnValue">0</strong></div>
-            <div><span>Difficulty</span><strong id="difficultyValue">Medium</strong></div>
-            <div><span>State</span><strong id="gameStateValue">Waiting</strong></div>
-            <div><span>Last move</span><strong id="lastMoveValue">None</strong></div>
-          </div>
-          <p id="statusMessage" class="status-message">Open the game and make your move with the arrow keys or the pad below.</p>
-        </section>
-
-        <section class="panel glass ai-panel">
-          <h2>Enemy Reasoning</h2>
-          <div class="ai-meta">
-            <span>Search depth: <strong id="aiDepthValue">4</strong></span>
-            <span>Pruned: <strong id="aiPrunedValue">0</strong></span>
-            <span>Nodes: <strong id="aiNodesValue">0</strong></span>
-          </div>
-          <div id="aiTrace" class="trace-list"></div>
-        </section>
-
-        <section class="panel glass controls-panel">
-          <h2>Controls</h2>
-          <p>Move with WASD or the keyboard arrows. Every move triggers the AI response.</p>
-          <div class="dpad" aria-label="On-screen movement controls">
-            <button data-direction="N">▲</button>
-            <div>
-              <button data-direction="W">◀</button>
-              <button data-direction="S">▼</button>
-              <button data-direction="E">▶</button>
-            </div>
-          </div>
-        </section>
-      </aside>
-    </section>
-  </main>
-
-  <script src="/static/app.js"></script>
-</body>
-</html> -->
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 <!doctype html>
 <html lang="en">
 <head>
@@ -105,178 +6,181 @@
   <title>Dungeon Crawler AI</title>
   <link rel="stylesheet" href="/static/styles.css">
   <style>
-    /* ── overlay ── */
+    /* ── overlay ───────────────────────────────────────── */
     #overlay {
-      position: absolute; inset: 0;
-      background: rgba(0,0,0,0.78);
-      display: flex; flex-direction: column;
-      align-items: center; justify-content: center;
-      gap: 12px; z-index: 20;
-      border-radius: inherit;
-      backdrop-filter: blur(4px);
-      transition: opacity 0.2s;
+      position:absolute; inset:0; z-index:20;
+      background:rgba(0,0,0,0.80);
+      backdrop-filter:blur(6px);
+      display:flex; flex-direction:column;
+      align-items:center; justify-content:center; gap:14px;
+      border-radius:inherit;
     }
-    #overlay.hidden { display: none; }
-    #overlayTitle { font-size: 2.2rem; font-weight: 800; color: #f1f5f9; margin: 0; }
-    #overlayMsg   { font-size: 1rem; color: #94a3b8; margin: 0; }
+    #overlay.hidden { display:none; }
+    #overlayTitle { font-size:2rem; font-weight:800; color:#f1f5f9; margin:0; }
+    #overlayMsg   { font-size:1rem; color:#94a3b8; margin:0; text-align:center; }
     #overlayBtn {
-      margin-top: 8px;
-      padding: 10px 28px;
-      background: #5A2D82; color: #fff;
-      border: none; border-radius: 8px;
-      font-size: 1rem; font-weight: 700;
-      cursor: pointer; transition: background 0.15s;
+      padding:10px 30px; background:#5A2D82; color:#fff;
+      border:none; border-radius:8px; font-size:1rem; font-weight:700;
+      cursor:pointer; transition:background .15s;
     }
-    #overlayBtn:hover { background: #7c3aed; }
+    #overlayBtn:hover { background:#7c3aed; }
 
-    /* ── how to play ── */
-    .how-to-play {
-      background: rgba(255,255,255,0.04);
-      border: 1px solid rgba(255,255,255,0.09);
-      border-radius: 12px;
-      padding: 18px 20px;
+    /* ── freeze badge ──────────────────────────────────── */
+    .freeze-badge {
+      display:inline-block;
+      background:rgba(99,102,241,0.18);
+      color:#a5b4fc;
+      border:1px solid rgba(99,102,241,0.35);
+      border-radius:6px;
+      padding:1px 7px;
+      font-size:0.78rem;
+      font-weight:700;
     }
-    .how-to-play h2 { margin: 0 0 12px; font-size: 1rem; color: #e2e8f0; }
-    .htp-grid {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 10px;
-    }
-    .htp-item { display: flex; flex-direction: column; gap: 3px; }
-    .htp-icon { font-size: 1.3rem; }
-    .htp-label { font-size: 0.72rem; color: #94a3b8; line-height: 1.35; }
 
-    /* ── connection pill colours ── */
-    .status-pill.connected    { background: rgba(34,197,94,0.15); color: #4ade80; }
-    .status-pill.disconnected { background: rgba(239,68,68,0.15);  color: #f87171; }
+    /* ── how-to-play panel ─────────────────────────────── */
+    .htp { padding:16px 18px; }
+    .htp h2 { margin:0 0 10px; font-size:.95rem; color:#e2e8f0; }
+    .htp-grid { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+    .htp-item { display:flex; gap:8px; align-items:flex-start; }
+    .htp-icon { font-size:1.1rem; line-height:1.4; }
+    .htp-text { font-size:.73rem; color:#94a3b8; line-height:1.4; }
+
+    /* ── connection pill ───────────────────────────────── */
+    .status-pill.connected    { background:rgba(34,197,94,.12); color:#4ade80; }
+    .status-pill.disconnected { background:rgba(239,68,68,.12); color:#f87171; }
   </style>
 </head>
 <body>
-  <div class="backdrop"></div>
-  <main class="shell">
-    <header class="hero">
-      <div>
-        <p class="eyebrow">FastAPI · DFS Maze · Minimax AI</p>
-        <h1>Dungeon Crawler AI</h1>
-        <p class="lede">Escape the dungeon maze before the enemy hunts you down.
-          Every move you make, the AI recalculates the best pursuit path using
-          Minimax with alpha-beta pruning.</p>
+<div class="backdrop"></div>
+<main class="shell">
+
+  <header class="hero">
+    <div>
+      <p class="eyebrow">FastAPI · DFS Maze · Minimax + Alpha-Beta</p>
+      <h1>Dungeon Crawler AI</h1>
+      <p class="lede">Escape the procedurally generated maze before the AI enemy hunts you down.
+        Every move you make, the enemy recalculates using Minimax with alpha-beta pruning.</p>
+    </div>
+    <div class="hero-actions">
+      <div class="difficulty-group" role="group" aria-label="Difficulty">
+        <button class="chip active" data-difficulty="easy">Easy</button>
+        <button class="chip"        data-difficulty="medium">Medium</button>
+        <button class="chip"        data-difficulty="hard">Hard</button>
       </div>
-      <div class="hero-actions">
-        <div class="difficulty-group" role="group" aria-label="Difficulty">
-          <button class="chip active" data-difficulty="easy">Easy</button>
-          <button class="chip"        data-difficulty="medium">Medium</button>
-          <button class="chip"        data-difficulty="hard">Hard</button>
+      <button id="newGameBtn" class="primary-button">New Game</button>
+    </div>
+  </header>
+
+  <section class="layout">
+
+    <!-- ── Board ───────────────────────────────────────────────── -->
+    <div class="board-card glass" style="position:relative;">
+      <div class="board-topbar">
+        <div>
+          <h2>Maze View</h2>
+          <p>🔵 You &nbsp;·&nbsp; 🔴 Enemy &nbsp;·&nbsp; ★ Exit (bottom-right)</p>
         </div>
-        <button id="newGameBtn" class="primary-button">New Game</button>
+        <div class="legend">
+          <span><i class="legend-player"></i>Player</span>
+          <span><i class="legend-enemy"></i>Enemy</span>
+          <span><i class="legend-exit"></i>Exit</span>
+        </div>
       </div>
-    </header>
 
-    <section class="layout">
+      <div id="overlay" class="hidden">
+        <p id="overlayTitle">—</p>
+        <p id="overlayMsg">—</p>
+        <button id="overlayBtn">Play Again</button>
+      </div>
 
-      <!-- ── Board ── -->
-      <div class="board-card glass" style="position:relative;">
-        <div class="board-topbar">
+      <canvas id="gameCanvas" width="680" height="680"
+              aria-label="Dungeon crawler maze"></canvas>
+    </div>
+
+    <!-- ── Sidebar ─────────────────────────────────────────────── -->
+    <aside class="side-column">
+
+      <!-- Status -->
+      <section class="panel glass status-panel">
+        <h2>Status</h2>
+        <div id="statusPill" class="status-pill">Connecting…</div>
+        <div class="status-grid">
+          <div><span>Turn</span>          <strong id="turnValue">0</strong></div>
+          <div><span>Difficulty</span>    <strong id="difficultyValue">—</strong></div>
+          <div><span>State</span>         <strong id="gameStateValue">Waiting</strong></div>
+          <div><span>Player speed</span>  <strong id="stepsValue">1×</strong></div>
+          <div><span>Last move</span>     <strong id="lastMoveValue">None</strong></div>
+          <div id="freezeRow" style="display:none">
+            <span>Enemy frozen</span>
+            <strong><span class="freeze-badge" id="freezeValue">0</span></strong>
+          </div>
+        </div>
+        <p id="statusMessage" class="status-message">
+          Pick a difficulty and press New Game.
+        </p>
+      </section>
+
+      <!-- AI Trace -->
+      <section class="panel glass ai-panel">
+        <h2>Enemy Reasoning</h2>
+        <div class="ai-meta">
+          <span>Depth: <strong id="aiDepthValue">—</strong></span>
+          <span>Nodes: <strong id="aiNodesValue">0</strong></span>
+          <span>Pruned: <strong id="aiPrunedValue">0</strong></span>
+        </div>
+        <div id="aiTrace" class="trace-list"></div>
+      </section>
+
+      <!-- Controls -->
+      <section class="panel glass controls-panel">
+        <h2>Controls</h2>
+        <div class="dpad" aria-label="On-screen movement controls">
+          <button data-direction="N">▲</button>
           <div>
-            <h2>Maze View</h2>
-            <p>🔵 You &nbsp;·&nbsp; 🔴 Enemy &nbsp;·&nbsp; ★ Exit</p>
-          </div>
-          <div class="legend">
-            <span><i class="legend-player"></i> Player</span>
-            <span><i class="legend-enemy"></i>  Enemy</span>
-            <span><i class="legend-exit"></i>   Exit</span>
+            <button data-direction="W">◀</button>
+            <button data-direction="S">▼</button>
+            <button data-direction="E">▶</button>
           </div>
         </div>
+        <p style="font-size:.75rem;color:#64748b;margin-top:8px;text-align:center;">
+          WASD &nbsp;·&nbsp; Arrow keys &nbsp;·&nbsp; D-pad
+        </p>
+      </section>
 
-        <!-- win/loss overlay lives inside the board card -->
-        <div id="overlay" class="hidden">
-          <p id="overlayTitle">You Escaped!</p>
-          <p id="overlayMsg">Great run.</p>
-          <button id="overlayBtn">Play Again</button>
+      <!-- How to Play -->
+      <section class="panel glass htp">
+        <h2>How to Play</h2>
+        <div class="htp-grid">
+          <div class="htp-item">
+            <span class="htp-icon">🔵</span>
+            <span class="htp-text"><strong>You</strong> — blue dot, starts top-left (0,0)</span>
+          </div>
+          <div class="htp-item">
+            <span class="htp-icon">★</span>
+            <span class="htp-text"><strong>Exit</strong> — gold star, bottom-right corner</span>
+          </div>
+          <div class="htp-item">
+            <span class="htp-icon">🔴</span>
+            <span class="htp-text"><strong>Enemy</strong> — red dot, spawns as far as possible from you</span>
+          </div>
+          <div class="htp-item">
+            <span class="htp-icon">❄️</span>
+            <span class="htp-text"><strong>Freeze</strong> — enemy is grey and frozen for N turns at start (Easy/Medium)</span>
+          </div>
+          <div class="htp-item">
+            <span class="htp-icon">⚡</span>
+            <span class="htp-text"><strong>Easy speed</strong> — you move 2 cells per key press</span>
+          </div>
+          <div class="htp-item">
+            <span class="htp-icon">🧠</span>
+            <span class="htp-text"><strong>AI</strong> — uses Minimax + alpha-beta to chase &amp; intercept</span>
+          </div>
         </div>
+      </section>
 
-        <canvas id="gameCanvas" width="700" height="700"
-                aria-label="Dungeon crawler board"></canvas>
-      </div>
-
-      <!-- ── Sidebar ── -->
-      <aside class="side-column">
-
-        <!-- Status -->
-        <section class="panel glass status-panel">
-          <h2>Status</h2>
-          <div id="statusPill" class="status-pill">Connecting…</div>
-          <div class="status-grid">
-            <div><span>Turn</span>        <strong id="turnValue">0</strong></div>
-            <div><span>Difficulty</span>  <strong id="difficultyValue">—</strong></div>
-            <div><span>State</span>       <strong id="gameStateValue">Waiting</strong></div>
-            <div><span>Last move</span>   <strong id="lastMoveValue">None</strong></div>
-          </div>
-          <p id="statusMessage" class="status-message">
-            Press New Game or pick a difficulty to start.
-          </p>
-        </section>
-
-        <!-- AI Reasoning -->
-        <section class="panel glass ai-panel">
-          <h2>Enemy Reasoning</h2>
-          <div class="ai-meta">
-            <span>Depth: <strong id="aiDepthValue">—</strong></span>
-            <span>Nodes: <strong id="aiNodesValue">0</strong></span>
-            <span>Pruned: <strong id="aiPrunedValue">0</strong></span>
-          </div>
-          <div id="aiTrace" class="trace-list"></div>
-        </section>
-
-        <!-- Controls -->
-        <section class="panel glass controls-panel">
-          <h2>Controls</h2>
-          <div class="dpad" aria-label="On-screen movement controls">
-            <button data-direction="N">▲</button>
-            <div>
-              <button data-direction="W">◀</button>
-              <button data-direction="S">▼</button>
-              <button data-direction="E">▶</button>
-            </div>
-          </div>
-          <p style="font-size:0.78rem;color:#64748b;margin-top:8px;text-align:center;">
-            WASD · Arrow Keys · D-pad
-          </p>
-        </section>
-
-        <!-- How to Play -->
-        <section class="how-to-play">
-          <h2>How to Play</h2>
-          <div class="htp-grid">
-            <div class="htp-item">
-              <span class="htp-icon">🔵</span>
-              <span class="htp-label"><strong>You</strong> — blue dot, starts top-left</span>
-            </div>
-            <div class="htp-item">
-              <span class="htp-icon">★</span>
-              <span class="htp-label"><strong>Exit</strong> — gold star, bottom-right</span>
-            </div>
-            <div class="htp-item">
-              <span class="htp-icon">🔴</span>
-              <span class="htp-label"><strong>Enemy</strong> — red dot, starts top-right</span>
-            </div>
-            <div class="htp-item">
-              <span class="htp-icon">🧱</span>
-              <span class="htp-label"><strong>Walls</strong> — maze generated fresh each game</span>
-            </div>
-            <div class="htp-item">
-              <span class="htp-icon">🎯</span>
-              <span class="htp-label"><strong>Goal</strong> — reach ★ before the enemy reaches you</span>
-            </div>
-            <div class="htp-item">
-              <span class="htp-icon">🤖</span>
-              <span class="htp-label"><strong>AI</strong> — enemy uses Minimax to hunt &amp; intercept</span>
-            </div>
-          </div>
-        </section>
-
-      </aside>
-    </section>
-  </main>
-
-  <script src="/static/app.js"></script>
+    </aside>
+  </section>
+</main>
+<script src="/static/app.js"></script>
 </body>
 </html>
